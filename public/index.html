@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Agendamento Online</title>
+<style>
+  :root {
+    --primary:    #1C4A2E;
+    --primary-dk: #0E1C14;
+    --accent:     #C9A84C;
+    --accent-lt:  #f0e8d0;
+    --bg:         #f7f8f5;
+    --card:       #ffffff;
+    --text:       #1a1a1a;
+    --muted:      #6b7280;
+    --border:     #e5e7eb;
+    --success:    #16a34a;
+    --slot-free:  #ecfdf5;
+    --slot-busy:  #fef2f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--primary-dk); padding: 20px 24px; display: flex; align-items: center; gap: 16px; }
+  .header-logo { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; overflow: hidden; }
+  .header-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .header-info h1 { color: #fff; font-size: 1.2rem; font-weight: 700; }
+  .header-info p  { color: #a3b89a; font-size: 0.82rem; margin-top: 2px; }
+  .header-badge { margin-left: auto; background: var(--accent); color: var(--primary-dk); font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+  .main { max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+  .step { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; border: 2px solid var(--border); background: var(--card); color: var(--muted); transition: all .3s; flex-shrink: 0; }
+  .step-label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; display: none; }
+  .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; }
+  .step.active .step-num  { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .step.done   .step-num  { background: var(--accent); border-color: var(--accent); color: var(--primary-dk); }
+  .step.active .step-label, .step.done .step-label { color: var(--primary); }
+  @media(min-width:500px){ .step-label { display: block; } }
+
+  .card { background: var(--card); border-radius: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.06); padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--primary-dk); display: flex; align-items: center; gap: 8px; }
+
+  .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .service-card { border: 2px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: all .2s; }
+  .service-card:hover { border-color: var(--primary); background: #f0f7f0; }
+  .service-card.selected { border-color: var(--accent); background: var(--accent-lt); }
+  .service-name { font-weight: 600; font-size: 0.92rem; }
+  .service-meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+  .service-price { font-weight: 700; color: var(--primary); }
+
+  .pros-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pro-card { border: 2px solid var(--border); border-radius: 12px; padding: 12px 16px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 12px; min-width: 180px; }
+  .pro-card:hover { border-color: var(--primary); background: #f0f7f0; }
+  .pro-card.selected { border-color: var(--accent); background: var(--accent-lt); }
+  .pro-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
+  .pro-name { font-weight: 600; font-size: 0.88rem; }
+  .pro-role { font-size: 0.75rem; color: var(--muted); }
+
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-month { font-weight: 700; font-size: 1rem; color: var(--primary-dk); }
+  .cal-nav { background: none; border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; color: var(--primary); transition: all .2s; }
+  .cal-nav:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+  .cal-dow { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--muted); padding: 4px 0; }
+  .cal-day { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; transition: all .2s; border: 2px solid transparent; }
+  .cal-day:hover:not(.disabled):not(.empty) { background: #e8f0e8; border-color: var(--primary); }
+  .cal-day.today   { font-weight: 700; color: var(--primary); }
+  .cal-day.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .cal-day.disabled { color: var(--border); cursor: not-allowed; }
+  .cal-day.empty   { cursor: default; }
+
+  .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+  .slot-btn { padding: 10px 8px; border-radius: 10px; border: 2px solid var(--border); background: var(--slot-free); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all .2s; text-align: center; }
+  .slot-btn:hover:not(.busy) { border-color: var(--primary); background: #e8f5ee; }
+  .slot-btn.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .slot-btn.busy { background: var(--slot-busy); color: #999; cursor: not-allowed; border-color: #fecaca; text-decoration: line-through; font-weight: 400; font-size: 0.78rem; }
+  .slots-legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .slot-legend { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .no-slots { color: var(--muted); font-size: 0.88rem; text-align: center; padding: 20px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; display: block; color: var(--primary-dk); }
+  .form-input { width: 100%; padding: 11px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 0.9rem; transition: border .2s; font-family: inherit; background: #fff; }
+  .form-input:focus { outline: none; border-color: var(--primary); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width:480px){ .form-row { grid-template-columns: 1fr; } }
+  textarea.form-input { resize: vertical; min-height: 80px; }
+
+  .summary-box { background: var(--accent-lt); border: 1.5px solid var(--accent); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(201,168,76,.2); font-size: 0.88rem; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-label { color: var(--muted); }
+  .summary-value { font-weight: 600; color: var(--primary-dk); }
+
+  .btn { padding: 13px 24px; border-radius: 10px; font-size: 0.92rem; font-weight: 700; cursor: pointer; border: none; transition: all .2s; font-family: inherit; }
+  .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-dk); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-accent { background: var(--accent); color: var(--primary-dk); width: 100%; }
+  .btn-accent:hover:not(:disabled) { background: #b8943e; }
+  .btn-accent:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 30px; color: var(--muted); font-size: 0.9rem; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box { background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: 12px 16px; color: #dc2626; font-size: 0.85rem; margin-bottom: 12px; }
+
+  .success-screen { text-align: center; padding: 32px 16px; }
+  .success-icon { font-size: 4rem; margin-bottom: 16px; }
+  .success-title { font-size: 1.4rem; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+  .success-msg { color: var(--muted); font-size: 0.92rem; line-height: 1.6; }
+  .success-code { display: inline-block; background: var(--accent-lt); border: 1.5px solid var(--accent); color: var(--primary-dk); font-weight: 700; font-size: 1.1rem; padding: 8px 20px; border-radius: 20px; margin: 16px 0; letter-spacing: 2px; }
+  .success-details { background: var(--bg); border-radius: 12px; padding: 16px; text-align: left; margin: 20px 0; }
+
+  .footer { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 32px; }
+  .footer a { color: var(--accent); text-decoration: none; }
+
+  .section { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  .mini-info { background: var(--accent-lt); border: 1.5px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+  .mini-info-label { font-size: 0.72rem; color: var(--muted); }
+  .mini-info-value { font-weight: 700; color: var(--primary-dk); font-size: 0.92rem; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     ⚙️ CONFIG DO CLIENTE — edite apenas este bloco
+     ══════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  nome:       "Clínica VetVida",
+  slogan:     "Petshop & Clínica Veterinária • Caraguatatuba, SP",
+  logo:       "",
+  cor:        "#1C4A2E",
+  corEscura:  "#0E1C14",
+  corAcento:  "#C9A84C",
+
+  // ID do Google Calendar do cliente
+  // (o cliente compartilha a agenda com a service account da PetsMark)
+  calendarId: "PRIMARY", // ou "xxxxx@group.calendar.google.com"
+
+  horaInicio: 8,
+  horaFim:    18,
+  intervalo:  60,  // minutos por slot
+  diasSemana: [1,2,3,4,5,6], // 0=Dom fechado
+
+  // URL base da sua API no Vercel (sem barra no final)
+  apiBase: "https://agendamento-petmark.vercel.app",
+
+  servicos: [
+    { id: "banho",    nome: "Banho",               duracao: 60,  preco: "R$ 60"  },
+    { id: "tosa",     nome: "Banho e Tosa",         duracao: 90,  preco: "R$ 90"  },
+    { id: "consulta", nome: "Consulta Veterinária", duracao: 30,  preco: "R$ 120" },
+    { id: "vacina",   nome: "Vacinação",            duracao: 20,  preco: "R$ 80"  },
+    { id: "creche",   nome: "Creche Pet (dia)",     duracao: 480, preco: "R$ 70"  },
+  ],
+
+  profissionais: [
+    { id: "ana",    nome: "Dra. Ana Lima",  cargo: "Veterinária", cor: "#1C4A2E" },
+    { id: "carlos", nome: "Carlos Souza",   cargo: "Tosador",     cor: "#4a1c2e" },
+    { id: "julia",  nome: "Julia Mendes",   cargo: "Banhista",    cor: "#1c3a4a" },
+  ],
+
+  whatsapp: "5512999999999",
+};
+</script>
+
+<header class="header" id="app-header">
+  <div class="header-logo" id="header-logo">🐾</div>
+  <div class="header-info">
+    <h1 id="header-nome">Carregando...</h1>
+    <p id="header-slogan"></p>
+  </div>
+  <span class="header-badge">Agendamento Online</span>
+</header>
+
+<main class="main">
+  <div class="steps" id="steps-bar">
+    <div class="step active" id="step-1"><div class="step-num">1</div><span class="step-label">Serviço</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-2"><div class="step-num">2</div><span class="step-label">Profissional</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-3"><div class="step-num">3</div><span class="step-label">Data & Hora</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-4"><div class="step-num">4</div><span class="step-label">Confirmação</span></div>
+  </div>
+
+  <div id="app-content"></div>
+
+  <div class="footer">
+    Powered by <a href="#">PetsMark Agency</a> • agendamento inteligente para o mercado pet
+  </div>
+</main>
+
+<script>
+// ════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════
+const state = {
+  step: 1,
+  servicoId: null,
+  proId: null,
+  data: null,
+  horario: null,
+  slots: [],
+  loadingSlots: false,
+  cliente: {},
+  submitting: false,
+  errorMsg: null,
+  successData: null,
+};
+
+let calYear = null, calMonth = null;
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const DIAS_PT = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function hoje() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function fmtDate(d) { const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
+function dateKey(y,m,d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+// ════════════════════════════════════════
+// API CALLS
+// ════════════════════════════════════════
+async function fetchSlots(date) {
+  const servico = CONFIG.servicos.find(s => s.id === state.servicoId);
+  const url = `${CONFIG.apiBase}/api/availability?date=${date}&calendarId=${encodeURIComponent(CONFIG.calendarId)}&duration=${servico.duracao}&start=${CONFIG.horaInicio}&end=${CONFIG.horaFim}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Erro ao carregar horários');
+  const data = await res.json();
+  return data.slots;
+}
+
+async function postBooking(payload) {
+  const res = await fetch(`${CONFIG.apiBase}/api/book`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.message || 'Erro'), { code: data.error });
+  return data;
+}
+
+// ════════════════════════════════════════
+// STEPS
+// ════════════════════════════════════════
+function updateSteps() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.className = 'step' + (i < state.step ? ' done' : i === state.step ? ' active' : '');
+  }
+}
+
+function render() {
+  updateSteps();
+  const c = document.getElementById('app-content');
+  if (state.step === 1) c.innerHTML = renderStep1();
+  else if (state.step === 2) c.innerHTML = renderStep2();
+  else if (state.step === 3) c.innerHTML = renderStep3();
+  else if (state.step === 4) c.innerHTML = renderStep4();
+  else if (state.step === 5) c.innerHTML = renderSuccess();
+  bindEvents();
+}
+
+// ── Step 1 ──────────────────────────────
+function renderStep1() {
+  const cards = CONFIG.servicos.map(s => `
+    <div class="service-card ${state.servicoId === s.id ? 'selected' : ''}" data-service="${s.id}">
+      <div class="service-name">${s.nome}</div>
+      <div class="service-meta">
+        <span>⏱ ${s.duracao < 60 ? s.duracao+'min' : (s.duracao/60)+'h'}</span>
+        <span class="service-price">${s.preco}</span>
+      </div>
+    </div>`).join('');
+  return `<div class="section">
+    <div class="card">
+      <div class="card-title"><span>🐾</span> Qual serviço você precisa?</div>
+      <div class="services-grid">${cards}</div>
+    </div>
+    <button class="btn btn-primary" id="btn-next-1" ${!state.servicoId ? 'disabled' : ''}>Continuar →</button>
+  </div>`;
+}
+
+// ── Step 2 ──────────────────────────────
+function renderStep2() {
+  const cards = CONFIG.profissionais.map(p => {
+    const ini = p.nome.split(' ').slice(0,2).map(w => w[0]).join('');
+    return `<div class="pro-card ${state.proId === p.id ? 'selected' : ''}" data-pro="${p.id}">
+      <div class="pro-avatar" style="background:${p.cor}">${ini}</div>
+      <div><div class="pro-name">${p.nome}</div><div class="pro-role">${p.cargo}</div></div>
+    </div>`;
+  }).join('');
+  const s = CONFIG.servicos.find(x => x.id === state.servicoId);
+  return `<div class="section">
+    <div class="mini-info"><div class="mini-info-label">Serviço selecionado</div><div class="mini-info-value">${s.nome} • ${s.preco}</div></div>
+    <div class="card">
+      <div class="card-title"><span>👤</span> Escolha o profissional</div>
+      <div class="pros-grid">${cards}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-back-2">← Voltar</button>
+      <button class="btn btn-primary" id="btn-next-2" ${!state.proId ? 'disabled' : ''}>Continuar →</button>
+    </div>
+  </div>`;
+}
+
+// ── Step 3 ──────────────────────────────
+function renderStep3() {
+  if (!calYear) { const n = new Date(); calYear = n.getFullYear(); calMonth = n.getMonth(); }
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const todayObj = hoje();
+
+  let calDays = DIAS_PT.map(d => `<div class="cal-dow">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) calDays += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const obj = new Date(calYear, calMonth, d);
+    const key = dateKey(calYear, calMonth, d);
+    const isPast = obj < todayObj;
+    const isClosed = !CONFIG.diasSemana.includes(obj.getDay());
+    const isDisabled = isPast || isClosed;
+    const isToday = obj.toDateString() === todayObj.toDateString();
+    const isSel = state.data === key;
+    let cls = 'cal-day' + (isToday ? ' today' : '') + (isDisabled ? ' disabled' : '') + (isSel ? ' selected' : '');
+    calDays += `<div class="${cls}" ${isDisabled ? '' : `data-date="${key}"`}>${d}</div>`;
+  }
+
+  // Slots
+  let slotsHtml = '';
+  if (state.loadingSlots) {
+    slotsHtml = `<div class="loading"><div class="spinner"></div> Consultando agenda do Google Calendar...</div>`;
+  } else if (!state.data) {
+    slotsHtml = `<p class="no-slots">← Selecione uma data para ver os horários disponíveis</p>`;
+  } else if (state.slots.length === 0) {
+    slotsHtml = `<p class="no-slots">Sem horários disponíveis neste dia.</p>`;
+  } else {
+    const livres = state.slots.filter(s => !s.busy).length;
+    slotsHtml = `<p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">${livres} horário${livres !== 1 ? 's' : ''} disponível${livres !== 1 ? 'is' : ''} em ${fmtDate(state.data)}</p>`;
+    slotsHtml += state.slots.map(s =>
+      `<button class="slot-btn ${s.busy ? 'busy' : ''} ${state.horario === s.time && !s.busy ? 'selected' : ''}"
+        ${s.busy ? 'disabled title="Horário ocupado"' : `data-slot="${s.time}"`}>${s.time}${s.busy ? '<br><small>Ocupado</small>' : ''}</button>`
+    ).join('');
+  }
+
+  const s = CONFIG.servicos.find(x => x.id === state.servicoId);
+  const p = CONFIG.profissionais.find(x => x.id === state.proId);
+
+  return `<div class="section">
+    <div class="mini-info">
+      <div class="mini-info-label">Agendando</div>
+      <div class="mini-info-value">${s.nome} com ${p.nome}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>📅</span> Escolha a data</div>
+      <div class="cal-header">
+        <button class="cal-nav" id="cal-prev">‹</button>
+        <span class="cal-month">${MESES[calMonth]} ${calYear}</span>
+        <button class="cal-nav" id="cal-next">›</button>
+      </div>
+      <div class="cal-grid">${calDays}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>⏰</span> Horários disponíveis</div>
+      <div class="slots-legend">
+        <div class="slot-legend"><div class="legend-dot" style="background:#dcfce7;border:1px solid #86efac"></div> Disponível (Google Calendar)</div>
+        <div class="slot-legend"><div class="legend-dot" style="background:#fecaca;border:1px solid #fca5a5"></div> Ocupado</div>
+      </div>
+      <div class="slots-grid">${slotsHtml}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-back-3">← Voltar</button>
+      <button class="btn btn-primary" id="btn-next-3" ${(!state.data || !state.horario || state.loadingSlots) ? 'disabled' : ''}>Continuar →</button>
+    </div>
+  </div>`;
+}
+
+// ── Step 4 ──────────────────────────────
+function renderStep4() {
+  const s = CONFIG.servicos.find(x => x.id === state.servicoId);
+  const p = CONFIG.profissionais.find(x => x.id === state.proId);
+  const err = state.errorMsg ? `<div class="error-box">⚠️ ${state.errorMsg}</div>` : '';
+  return `<div class="section">
+    <div class="card">
+      <div class="card-title"><span>📋</span> Resumo</div>
+      <div class="summary-box">
+        <div class="summary-row"><span class="summary-label">Serviço</span><span class="summary-value">${s.nome}</span></div>
+        <div class="summary-row"><span class="summary-label">Profissional</span><span class="summary-value">${p.nome}</span></div>
+        <div class="summary-row"><span class="summary-label">Data</span><span class="summary-value">${fmtDate(state.data)}</span></div>
+        <div class="summary-row"><span class="summary-label">Horário</span><span class="summary-value">${state.horario}</span></div>
+        <div class="summary-row"><span class="summary-label">Valor</span><span class="summary-value" style="color:var(--primary)">${s.preco}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>👤</span> Seus dados</div>
+      ${err}
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Seu nome *</label><input class="form-input" id="f-nome" type="text" placeholder="Nome completo" value="${state.cliente.nome||''}"></div>
+        <div class="form-group"><label class="form-label">WhatsApp *</label><input class="form-input" id="f-whats" type="tel" placeholder="(12) 99999-9999" value="${state.cliente.whats||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Nome do pet *</label><input class="form-input" id="f-pet" type="text" placeholder="Ex: Rex, Mel..." value="${state.cliente.pet||''}"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Espécie</label>
+          <select class="form-input" id="f-especie">
+            <option value="cachorro">🐕 Cachorro</option>
+            <option value="gato">🐈 Gato</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Raça (opcional)</label><input class="form-input" id="f-raca" type="text" placeholder="Ex: Labrador" value="${state.cliente.raca||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Observações (opcional)</label><textarea class="form-input" id="f-obs" placeholder="Algo importante sobre seu pet...">${state.cliente.obs||''}</textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-back-4">← Voltar</button>
+      <button class="btn btn-accent" id="btn-confirmar" ${state.submitting ? 'disabled' : ''}>
+        ${state.submitting ? '<span style="display:flex;align-items:center;justify-content:center;gap:8px"><span class="spinner" style="border-top-color:var(--primary-dk)"></span> Confirmando...</span>' : '✅ Confirmar Agendamento'}
+      </button>
+    </div>
+  </div>`;
+}
+
+// ── Sucesso ──────────────────────────────
+function renderSuccess() {
+  const s = CONFIG.servicos.find(x => x.id === state.servicoId);
+  const p = CONFIG.profissionais.find(x => x.id === state.proId);
+  const d = state.successData;
+  const waMsg = encodeURIComponent(`Olá! Confirmando meu agendamento:\n\nServiço: ${s.nome}\nProfissional: ${p.nome}\nData: ${fmtDate(state.data)} às ${state.horario}\nPet: ${state.cliente.pet}\nCódigo: ${d.codigo}`);
+  return `<div class="section">
+    <div class="card success-screen">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">Agendamento Confirmado!</div>
+      <p class="success-msg">Seu horário foi reservado e já aparece na agenda do estabelecimento.</p>
+      <div class="success-code">${d.codigo}</div>
+      <div class="success-details">
+        <div class="summary-row"><span class="summary-label">Serviço</span><span class="summary-value">${s.nome}</span></div>
+        <div class="summary-row"><span class="summary-label">Profissional</span><span class="summary-value">${p.nome}</span></div>
+        <div class="summary-row"><span class="summary-label">Data</span><span class="summary-value">${fmtDate(state.data)}</span></div>
+        <div class="summary-row"><span class="summary-label">Horário</span><span class="summary-value">${state.horario}</span></div>
+        <div class="summary-row"><span class="summary-label">Pet</span><span class="summary-value">${state.cliente.pet}</span></div>
+      </div>
+      ${CONFIG.whatsapp ? `<a href="https://wa.me/${CONFIG.whatsapp}?text=${waMsg}" target="_blank" style="text-decoration:none;display:block;margin-top:8px;"><button class="btn btn-primary" style="background:#25d366">💬 Confirmar pelo WhatsApp</button></a>` : ''}
+      <button class="btn btn-outline" id="btn-novo" style="margin-top:10px">+ Fazer outro agendamento</button>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════
+// BIND EVENTOS
+// ════════════════════════════════════════
+function bindEvents() {
+  // Step 1
+  document.querySelectorAll('[data-service]').forEach(el => {
+    el.addEventListener('click', () => { state.servicoId = el.dataset.service; render(); });
+  });
+  document.getElementById('btn-next-1')?.addEventListener('click', () => { state.step = 2; render(); });
+
+  // Step 2
+  document.querySelectorAll('[data-pro]').forEach(el => {
+    el.addEventListener('click', () => { state.proId = el.dataset.pro; render(); });
+  });
+  document.getElementById('btn-next-2')?.addEventListener('click', () => { state.step = 3; render(); });
+  document.getElementById('btn-back-2')?.addEventListener('click', () => { state.step = 1; render(); });
+
+  // Step 3
+  document.getElementById('cal-prev')?.addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    state.data = null; state.horario = null; state.slots = []; render();
+  });
+  document.getElementById('cal-next')?.addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    state.data = null; state.horario = null; state.slots = []; render();
+  });
+  document.querySelectorAll('[data-date]').forEach(el => {
+    el.addEventListener('click', async () => {
+      state.data = el.dataset.date;
+      state.horario = null;
+      state.slots = [];
+      state.loadingSlots = true;
+      render();
+      try {
+        state.slots = await fetchSlots(state.data);
+      } catch(e) {
+        state.slots = [];
+        state.errorMsg = 'Não foi possível carregar os horários. Tente novamente.';
+      }
+      state.loadingSlots = false;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-slot]').forEach(el => {
+    el.addEventListener('click', () => { state.horario = el.dataset.slot; render(); });
+  });
+  document.getElementById('btn-next-3')?.addEventListener('click', () => { state.step = 4; state.errorMsg = null; render(); });
+  document.getElementById('btn-back-3')?.addEventListener('click', () => { state.step = 2; render(); });
+
+  // Step 4
+  document.getElementById('btn-back-4')?.addEventListener('click', () => { state.step = 3; state.errorMsg = null; render(); });
+  document.getElementById('btn-confirmar')?.addEventListener('click', async () => {
+    const nome  = document.getElementById('f-nome').value.trim();
+    const whats = document.getElementById('f-whats').value.trim();
+    const pet   = document.getElementById('f-pet').value.trim();
+    if (!nome || !whats || !pet) { state.errorMsg = 'Preencha nome, WhatsApp e nome do pet.'; render(); return; }
+
+    state.cliente = {
+      nome, whats, pet,
+      especie: document.getElementById('f-especie').value,
+      raca:    document.getElementById('f-raca').value.trim(),
+      obs:     document.getElementById('f-obs').value.trim(),
+    };
+    state.errorMsg = null;
+    state.submitting = true;
+    render();
+
+    const servico = CONFIG.servicos.find(s => s.id === state.servicoId);
+    const pro     = CONFIG.profissionais.find(p => p.id === state.proId);
+
+    try {
+      const result = await postBooking({
+        calendarId:   CONFIG.calendarId,
+        date:         state.data,
+        time:         state.horario,
+        duration:     servico.duracao,
+        service:      servico.nome,
+        profissional: pro.nome,
+        clientName:   state.cliente.nome,
+        clientPhone:  state.cliente.whats,
+        petName:      state.cliente.pet,
+        especie:      state.cliente.especie,
+        raca:         state.cliente.raca,
+        notes:        state.cliente.obs,
+      });
+      state.successData = result;
+      state.submitting = false;
+      state.step = 5;
+      render();
+    } catch(err) {
+      state.submitting = false;
+      if (err.code === 'SLOT_BUSY') {
+        state.errorMsg = 'Este horário acabou de ser reservado. Volte e escolha outro.';
+        // Recarregar slots
+        state.slots = [];
+        setTimeout(async () => {
+          try { state.slots = await fetchSlots(state.data); } catch(e) {}
+          render();
+        }, 500);
+      } else {
+        state.errorMsg = err.message || 'Erro ao confirmar. Tente novamente.';
+      }
+      render();
+    }
+  });
+
+  // Sucesso
+  document.getElementById('btn-novo')?.addEventListener('click', () => {
+    state.step = 1; state.servicoId = null; state.proId = null;
+    state.data = null; state.horario = null; state.slots = [];
+    state.cliente = {}; state.successData = null; state.errorMsg = null;
+    calYear = null; calMonth = null;
+    render();
+  });
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+(function init() {
+  document.getElementById('page-title').textContent = CONFIG.nome + ' — Agendamento';
+  document.getElementById('header-nome').textContent = CONFIG.nome;
+  document.getElementById('header-slogan').textContent = CONFIG.slogan;
+  document.documentElement.style.setProperty('--primary', CONFIG.cor);
+  document.documentElement.style.setProperty('--primary-dk', CONFIG.corEscura);
+  document.documentElement.style.setProperty('--accent', CONFIG.corAcento);
+  document.getElementById('app-header').style.background = CONFIG.corEscura;
+  const logo = document.getElementById('header-logo');
+  if (CONFIG.logo) logo.innerHTML = `<img src="${CONFIG.logo}" alt="logo">`;
+  else logo.textContent = CONFIG.nome.charAt(0);
+  render();
+})();
+</script>
+</body>
+</html>
