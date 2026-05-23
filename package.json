@@ -1,0 +1,8 @@
+{
+  "name": "agendamento-petmark",
+  "version": "1.0.0",
+  "description": "Sistema de agendamento PetsMark Agency com Google Calendar",
+  "dependencies": {
+    "googleapis": "^140.0.0"
+  }
+}
